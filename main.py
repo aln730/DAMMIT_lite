@@ -39,14 +39,18 @@ def callback(indata, frames, time_info, status):
 
     scale = 0.0005
 
-    # Randomized colors for each band
-    r = min(bass * scale, 1) * 100 * random.uniform(0.5, 1.0)
-    g = min(mids * scale, 1) * 100 * random.uniform(0.5, 1.0)
-    b = min(highs * scale, 1) * 100 * random.uniform(0.5, 1.0)
+    # Create a list of the three frequency values
+    freqs = [bass, mids, highs]
+    random.shuffle(freqs)  # shuffle them
+
+    # Map the shuffled values to RGB randomly
+    r = min(freqs[0] * scale, 1) * 100
+    g = min(freqs[1] * scale, 1) * 100
+    b = min(freqs[2] * scale, 1) * 100
 
     set_color(r, g, b)
 
-print("Ctrl+C to stop.")
+print("🎤 Mic visualizer running… Ctrl+C to stop.")
 
 try:
     with sd.InputStream(callback=callback,
