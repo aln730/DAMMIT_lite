@@ -1,40 +1,41 @@
-import time
+import sounddevice as sd
+import numpy as np
 import RPi.GPIO as GPIO
 
-# RGB pins (BOARD numbering)
-redPin = 11
-greenPin = 15
-bluePin = 13
+# GPIO pins
+red = 11
+green = 15
+blue = 13
 
 GPIO.setmode(GPIO.BOARD)
+GPIO.setup(red, GPIO.OUT)
+GPIO.setup(green, GPIO.OUT)
+GPIO.setup(blue, GPIO.OUT)
 
-GPIO.setup(redPin, GPIO.OUT)
-GPIO.setup(greenPin, GPIO.OUT)
-GPIO.setup(bluePin, GPIO.OUT)
+def set_color(r, g, b):
+    GPIO.output(red, r)
+    GPIO.output(green, g)
+    GPIO.output(blue, b)
 
-def all_off():
-    GPIO.output(redPin, GPIO.LOW)
-    GPIO.output(greenPin, GPIO.LOW)
-    GPIO.output(bluePin, GPIO.LOW)
+def audio_callback(indata, frames, time, status):
+    volume = np.linalg.norm(indata)  # measure loudness
+
+    if volume > 0.2:
+        set_color(1, 0, 0)   # loud -> RED
+    elif volume > 0.05:
+        set_color(0, 1, 0)   # medium -> GREEN
+    else:
+        set_color(0, 0, 1)   # quiet -> BLUE
 
 try:
-    print("Testing RED...")
-    GPIO.output(redPin, GPIO.HIGH)
-    time.sleep(1)
-    all_off()
+    print("Listening...")
+    with sd.InputStream(callback=audio_callback):
+        while True:
+            pass
 
-    print("Testing GREEN...")
-    GPIO.output(greenPin, GPIO.HIGH)
-    time.sleep(1)
-    all_off()
-
-    print("Testing BLUE...")
-    GPIO.output(bluePin, GPIO.HIGH)
-    time.sleep(1)
-    all_off()
-
-    print("Done.")
+except KeyboardInterrupt:
+    pass
 
 finally:
-    all_off()
+    set_color(0, 0, 0)
     GPIO.cleanup()
