@@ -1,6 +1,5 @@
 import RPi.GPIO as GPIO
 import time
-import math
 import random
 
 # --- GPIO pins ---
@@ -13,60 +12,49 @@ GPIO.setup(RED, GPIO.OUT)
 GPIO.setup(GREEN, GPIO.OUT)
 GPIO.setup(BLUE, GPIO.OUT)
 
-# --- PWM for smooth brightness ---
-red_pwm = GPIO.PWM(RED, 1000)
-green_pwm = GPIO.PWM(GREEN, 1000)
-blue_pwm = GPIO.PWM(BLUE, 1000)
-
-red_pwm.start(0)
-green_pwm.start(0)
-blue_pwm.start(0)
-
 def set_color(r, g, b):
-    """Set RGB LED color (0-100%)"""
-    red_pwm.ChangeDutyCycle(r)
-    green_pwm.ChangeDutyCycle(g)
-    blue_pwm.ChangeDutyCycle(b)
+    """Set RGB color (1 = on, 0 = off)"""
+    GPIO.output(RED, r)
+    GPIO.output(GREEN, g)
+    GPIO.output(BLUE, b)
 
-# --- Pattern 1: Smooth rainbow fade ---
-def rainbow_fade(duration=5, steps=100):
-    for i in range(steps):
-        t = i / steps
-        r = (math.sin(t * math.pi * 2) + 1) / 2 * 100
-        g = (math.sin(t * math.pi * 2 + 2) + 1) / 2 * 100
-        b = (math.sin(t * math.pi * 2 + 4) + 1) / 2 * 100
-        set_color(r, g, b)
-        time.sleep(duration / steps)
-
-# --- Pattern 2: Random flashes ---
+# --- Pattern 1: Random flashes ---
 def random_flash(times=20):
     for _ in range(times):
-        r = random.randint(0, 100)
-        g = random.randint(0, 100)
-        b = random.randint(0, 100)
+        r = random.randint(0, 1)
+        g = random.randint(0, 1)
+        b = random.randint(0, 1)
         set_color(r, g, b)
         time.sleep(0.2)
 
-# --- Pattern 3: Breathing effect ---
-def breathing(duration=5, steps=50):
-    for i in range(steps):
-        t = (math.sin(math.pi * i / steps) + 1) / 2 * 100
-        set_color(t, t/2, 100-t)
-        time.sleep(duration / steps)
+# --- Pattern 2: RGB chase ---
+def rgb_chase(times=10, speed=0.3):
+    for _ in range(times):
+        set_color(1,0,0)
+        time.sleep(speed)
+        set_color(0,1,0)
+        time.sleep(speed)
+        set_color(0,0,1)
+        time.sleep(speed)
+
+# --- Pattern 3: All on/off strobe ---
+def strobe(times=10, speed=0.1):
+    for _ in range(times):
+        set_color(1,1,1)
+        time.sleep(speed)
+        set_color(0,0,0)
+        time.sleep(speed)
 
 # --- Main loop ---
 try:
     while True:
-        rainbow_fade()
         random_flash()
-        breathing()
+        rgb_chase()
+        strobe()
 
 except KeyboardInterrupt:
     pass
 
 finally:
-    set_color(0, 0, 0)
-    red_pwm.stop()
-    green_pwm.stop()
-    blue_pwm.stop()
+    set_color(0,0,0)
     GPIO.cleanup()
