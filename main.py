@@ -1,6 +1,7 @@
+import soundfile as sf
+import numpy as np
 import RPi.GPIO as GPIO
 import time
-import random
 
 # --- GPIO pins ---
 RED = 11
@@ -13,48 +14,38 @@ GPIO.setup(GREEN, GPIO.OUT)
 GPIO.setup(BLUE, GPIO.OUT)
 
 def set_color(r, g, b):
-    """Set RGB color (1 = on, 0 = off)"""
     GPIO.output(RED, r)
     GPIO.output(GREEN, g)
     GPIO.output(BLUE, b)
 
-# --- Pattern 1: Random flashes ---
-def random_flash(times=20):
-    for _ in range(times):
-        r = random.randint(0, 1)
-        g = random.randint(0, 1)
-        b = random.randint(0, 1)
-        set_color(r, g, b)
-        time.sleep(0.2)
+# Load audio file
+filename = "song.wav"  # your WAV file
+data, samplerate = sf.read(filename)
 
-# --- Pattern 2: RGB chase ---
-def rgb_chase(times=10, speed=0.3):
-    for _ in range(times):
-        set_color(1,0,0)
-        time.sleep(speed)
-        set_color(0,1,0)
-        time.sleep(speed)
-        set_color(0,0,1)
-        time.sleep(speed)
+# Normalize if stereo
+if len(data.shape) > 1:
+    data = data.mean(axis=1)
 
-# --- Pattern 3: All on/off strobe ---
-def strobe(times=10, speed=0.1):
-    for _ in range(times):
-        set_color(1,1,1)
-        time.sleep(speed)
-        set_color(0,0,0)
-        time.sleep(speed)
+# Process audio in small chunks
+chunk_size = 1024
+num_chunks = len(data) // chunk_size
 
-# --- Main loop ---
 try:
-    while True:
-        random_flash()
-        rgb_chase()
-        strobe()
+    for i in range(num_chunks):
+        chunk = data[i*chunk_size:(i+1)*chunk_size]
+        volume = np.linalg.norm(chunk)
+
+        if volume > 0.5:
+            set_color(1, 0, 0)  # Loud → RED
+        elif volume > 0.2:
+            set_color(0, 1, 0)  # Medium → GREEN
+        else:
+            set_color(0, 0, 1)  # Quiet → BLUE
+
+        time.sleep(chunk_size / samplerate)  # real-time pacing
 
 except KeyboardInterrupt:
     pass
-
 finally:
     set_color(0,0,0)
     GPIO.cleanup()
