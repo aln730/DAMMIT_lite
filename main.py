@@ -1,9 +1,8 @@
-import soundfile as sf
+import sounddevice as sd
 import numpy as np
 import RPi.GPIO as GPIO
 import time
 
-# --- GPIO pins ---
 RED = 11
 GREEN = 15
 BLUE = 13
@@ -13,39 +12,55 @@ GPIO.setup(RED, GPIO.OUT)
 GPIO.setup(GREEN, GPIO.OUT)
 GPIO.setup(BLUE, GPIO.OUT)
 
+
+pwm_r = GPIO.PWM(RED, 500)
+pwm_g = GPIO.PWM(GREEN, 500)
+pwm_b = GPIO.PWM(BLUE, 500)
+
+pwm_r.start(0)
+pwm_g.start(0)
+pwm_b.start(0)
+
 def set_color(r, g, b):
-    GPIO.output(RED, r)
-    GPIO.output(GREEN, g)
-    GPIO.output(BLUE, b)
+    pwm_r.ChangeDutyCycle(r)
+    pwm_g.ChangeDutyCycle(g)
+    pwm_b.ChangeDutyCycle(b)
 
-# Load audio file
-filename = "song.wav"  # your WAV file
-data, samplerate = sf.read(filename)
+SAMPLE_RATE = 44100
+CHUNK = 1024
 
-# Normalize if stereo
-if len(data.shape) > 1:
-    data = data.mean(axis=1)
+def callback(indata, frames, time_info, status):
 
-# Process audio in small chunks
-chunk_size = 1024
-num_chunks = len(data) // chunk_size
+    audio = np.mean(indata, axis=1)
+
+
+    fft = np.abs(np.fft.rfft(audio))
+
+
+    bass  = np.mean(fft[0:80])     
+    mids  = np.mean(fft[80:300])    
+    highs = np.mean(fft[300:800])    
+
+    scale = 0.0005
+    r = min(bass * scale, 1) * 100
+    g = min(mids * scale, 1) * 100
+    b = min(highs * scale, 1) * 100
+
+    set_color(r, g, b)
+
+print("🎤 Mic visualizer running… Ctrl+C to stop.")
 
 try:
-    for i in range(num_chunks):
-        chunk = data[i*chunk_size:(i+1)*chunk_size]
-        volume = np.linalg.norm(chunk)
-
-        if volume > 0.5:
-            set_color(1, 0, 0)  # Loud → RED
-        elif volume > 0.2:
-            set_color(0, 1, 0)  # Medium → GREEN
-        else:
-            set_color(0, 0, 1)  # Quiet → BLUE
-
-        time.sleep(chunk_size / samplerate)  # real-time pacing
+    with sd.InputStream(callback=callback,
+                        channels=2,    
+                        samplerate=SAMPLE_RATE,
+                        blocksize=CHUNK):
+        while True:
+            time.sleep(0.1)
 
 except KeyboardInterrupt:
     pass
 finally:
-    set_color(0,0,0)
+    set_color(0, 0, 0)
     GPIO.cleanup()
+    print("LEDs off. Goodbye!")
