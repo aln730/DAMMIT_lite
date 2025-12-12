@@ -33,24 +33,22 @@ def callback(indata, frames, time_info, status):
     audio = np.mean(indata, axis=1)
     fft = np.abs(np.fft.rfft(audio))
 
-    bass  = np.mean(fft[0:80])     
-    mids  = np.mean(fft[80:300])    
+    bass  = np.mean(fft[50:120])     
+    mids  = np.mean(fft[120:300])    
     highs = np.mean(fft[300:800])    
 
     scale = 0.0005
 
-    # Create a list of the three frequency values
     freqs = [bass, mids, highs]
-    random.shuffle(freqs)  # shuffle them
+    random.shuffle(freqs)
 
-    # Map the shuffled values to RGB randomly
     r = min(freqs[0] * scale, 1) * 100
     g = min(freqs[1] * scale, 1) * 100
     b = min(freqs[2] * scale, 1) * 100
 
     set_color(r, g, b)
 
-print("🎤 Mic visualizer running… Ctrl+C to stop.")
+print("Ctrl+C to stop.")
 
 try:
     with sd.InputStream(callback=callback,
@@ -65,4 +63,4 @@ except KeyboardInterrupt:
 finally:
     set_color(0, 0, 0)
     GPIO.cleanup()
-    print("LEDs off. Goodbye!")
+    print("LEDs off")
