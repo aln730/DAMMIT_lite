@@ -29,15 +29,20 @@ def set_color(r, g, b):
 SAMPLE_RATE = 44100
 CHUNK = 1024
 
-def callback(indata, frames, time_info, status):
-    audio = np.mean(indata, axis=1)
-    fft = np.abs(np.fft.rfft(audio))
+prev_r, prev_g, prev_b = 0, 0, 0
 
+def callback(indata, frames, time_info, status):
+    global prev_r, prev_g, prev_b
+
+    audio = np.mean(indata, axis=1)
+
+    fft = np.abs(np.fft.rfft(audio))
+    
     bass  = np.mean(fft[50:120])     
     mids  = np.mean(fft[120:300])    
     highs = np.mean(fft[300:800])    
 
-    scale = 0.0005
+    scale = 0.0002
 
     freqs = [bass, mids, highs]
     random.shuffle(freqs)
@@ -46,7 +51,13 @@ def callback(indata, frames, time_info, status):
     g = min(freqs[1] * scale, 1) * 100
     b = min(freqs[2] * scale, 1) * 100
 
+    r = 0.7 * prev_r + 0.3 * r
+    g = 0.7 * prev_g + 0.3 * g
+    b = 0.7 * prev_b + 0.3 * b
+
     set_color(r, g, b)
+
+    prev_r, prev_g, prev_b = r, g, b
 
 print("Ctrl+C to stop.")
 
